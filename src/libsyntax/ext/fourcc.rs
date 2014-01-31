@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -22,15 +22,16 @@ use ext::base;
 use ext::build::AstBuilder;
 use parse;
 use parse::token;
+use parse::token::InternedString;
 
 use std::ascii::AsciiCast;
 
-pub fn expand_syntax_ext(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree]) -> base::MacResult {
+pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]) -> base::MacResult {
     let (expr, endian) = parse_tts(cx, tts);
 
     let little = match endian {
         None => target_endian_little(cx, sp),
-        Some(Ident{ident, span}) => match cx.str_of(ident).as_slice() {
+        Some(Ident{ident, span}) => match token::get_ident(ident.name).get() {
             "little" => true,
             "big" => false,
             _ => {
@@ -44,36 +45,36 @@ pub fn expand_syntax_ext(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree]) -> bas
         // expression is a literal
         ast::ExprLit(lit) => match lit.node {
             // string literal
-            ast::lit_str(s) => {
-                if !s.is_ascii() {
+            ast::LitStr(ref s, _) => {
+                if !s.get().is_ascii() {
                     cx.span_err(expr.span, "non-ascii string literal in fourcc!");
-                } else if s.len() != 4 {
+                } else if s.get().len() != 4 {
                     cx.span_err(expr.span, "string literal with len != 4 in fourcc!");
                 }
                 s
             }
             _ => {
                 cx.span_err(expr.span, "unsupported literal in fourcc!");
-                return MRExpr(cx.expr_lit(sp, ast::lit_uint(0u64, ast::ty_u32)));
+                return MRExpr(cx.expr_lit(sp, ast::LitUint(0u64, ast::TyU32)));
             }
         },
         _ => {
             cx.span_err(expr.span, "non-literal in fourcc!");
-            return MRExpr(cx.expr_lit(sp, ast::lit_uint(0u64, ast::ty_u32)));
+            return MRExpr(cx.expr_lit(sp, ast::LitUint(0u64, ast::TyU32)));
         }
     };
 
     let mut val = 0u32;
     if little {
-        for byte in s.byte_rev_iter().take(4) {
+        for byte in s.get().bytes_rev().take(4) {
             val = (val << 8) | (byte as u32);
         }
     } else {
-        for byte in s.byte_iter().take(4) {
+        for byte in s.get().bytes().take(4) {
             val = (val << 8) | (byte as u32);
         }
     }
-    let e = cx.expr_lit(sp, ast::lit_uint(val as u64, ast::ty_u32));
+    let e = cx.expr_lit(sp, ast::LitUint(val as u64, ast::TyU32));
     MRExpr(e)
 }
 
@@ -82,10 +83,10 @@ struct Ident {
     span: Span
 }
 
-fn parse_tts(cx: @ExtCtxt, tts: &[ast::token_tree]) -> (@ast::Expr, Option<Ident>) {
-    let p = parse::new_parser_from_tts(cx.parse_sess(), cx.cfg(), tts.to_owned());
+fn parse_tts(cx: &ExtCtxt, tts: &[ast::TokenTree]) -> (@ast::Expr, Option<Ident>) {
+    let p = &mut parse::new_parser_from_tts(cx.parse_sess(), cx.cfg(), tts.to_owned());
     let ex = p.parse_expr();
-    let id = if *p.token == token::EOF {
+    let id = if p.token == token::EOF {
         None
     } else {
         p.expect(&token::COMMA);
@@ -94,13 +95,14 @@ fn parse_tts(cx: @ExtCtxt, tts: &[ast::token_tree]) -> (@ast::Expr, Option<Ident
         let hi = p.last_span.hi;
         Some(Ident{ident: ident, span: mk_sp(lo, hi)})
     };
-    if *p.token != token::EOF {
+    if p.token != token::EOF {
         p.unexpected();
     }
     (ex, id)
 }
 
-fn target_endian_little(cx: @ExtCtxt, sp: Span) -> bool {
-    let meta = cx.meta_name_value(sp, @"target_endian", ast::lit_str(@"little"));
+fn target_endian_little(cx: &ExtCtxt, sp: Span) -> bool {
+    let meta = cx.meta_name_value(sp, InternedString::new("target_endian"),
+        ast::LitStr(InternedString::new("little"), ast::CookedStr));
     contains(cx.cfg(), meta)
 }

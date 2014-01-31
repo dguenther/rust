@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(fourcc)];
+
 fn main() {
     let val = fourcc!("foo"); //~ ERROR string literal with len != 4 in fourcc!
     let val2 = fourcc!("fooba"); //~ ERROR string literal with len != 4 in fourcc!

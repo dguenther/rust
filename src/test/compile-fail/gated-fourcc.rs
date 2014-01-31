@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(fourcc)];
-
 fn main() {
-    let val = fourcc!(45f32); //~ ERROR unsupported literal in fourcc!
+    unsafe {
+        fourcc!("foo "); //~ ERROR FourCCs are not stable enough
+    }
 }

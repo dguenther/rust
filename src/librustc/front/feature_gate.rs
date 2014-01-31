@@ -49,6 +49,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("trace_macros", Active),
     ("simd", Active),
     ("default_type_params", Active),
+    ("fourcc", Active),
 
     // These are used to test this portion of the compiler, they don't actually
     // mean anything
@@ -204,9 +205,15 @@ impl Visitor<()> for Context {
             self.gate_feature("log_syntax", path.span, "`log_syntax!` is not \
                 stable enough for use and is subject to change");
         }
+
         else if path.segments.last().unwrap().identifier == self.sess.ident_of("trace_macros") {
             self.gate_feature("trace_macros", path.span, "`trace_macros` is not \
                 stable enough for use and is subject to change");
+        }
+
+        else if path.segments.last().unwrap().identifier == self.sess.ident_of("fourcc") {
+            self.gate_feature("fourcc", path.span, "FourCCs are not \
+                stable enough for use and are subject to change");
         }
     }
 

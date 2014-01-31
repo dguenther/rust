@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(fourcc)];
+
 fn main() {
     let val = fourcc!("foo ", bork); //~ ERROR invalid endian directive in fourcc!
 }
