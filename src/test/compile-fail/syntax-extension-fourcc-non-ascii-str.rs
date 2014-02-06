@@ -11,5 +11,5 @@
 #[feature(fourcc)];
 
 fn main() {
-    let v = fourcc!("fooλ"); //~ ERROR non-ascii string literal in fourcc!
+    let v = fourcc!("fooλ"); //~ ERROR fourcc! literal character out of range 0-255
 }
